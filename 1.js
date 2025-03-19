@@ -1,21 +1,26 @@
 d3.csv("data_ggsheet (1).csv").then(function(data) {
     data.forEach(d => {
         d.Thanh_tien = +d.Thanh_tien;
+        d.Mat_hang = `[${d.Ma_mat_hang}] ${d.Ten_mat_hang}`;
         d.Nhom_hang = `[${d.Ma_nhom_hang}] ${d.Ten_nhom_hang}`;
     });
 
+    // Nhóm doanh số theo mặt hàng
     const groupedData = d3.rollups(
         data,
-        v => d3.sum(v, d => d.Thanh_tien),
-        d => d.Nhom_hang
-    ).map(([Nhom_hang, Thanh_tien]) => ({ Nhom_hang, Thanh_tien }));
+        v => ({ Thanh_tien: d3.sum(v, d => d.Thanh_tien), Nhom_hang: v[0].Nhom_hang }),
+        d => d.Mat_hang
+    ).map(([Mat_hang, values]) => ({ Mat_hang, ...values }));
 
     groupedData.sort((a, b) => b.Thanh_tien - a.Thanh_tien);
 
-    const uniqueGroups = groupedData.map(d => d.Nhom_hang);
+    // Lấy danh sách nhóm hàng duy nhất
+    const uniqueGroups = [...new Set(groupedData.map(d => d.Nhom_hang))];
+
+    // Tạo thang màu theo nhóm hàng
     const colorScale = d3.scaleOrdinal()
         .domain(uniqueGroups)
-        .range(d3.schemeTableau10);
+        .range(d3.schemeTableau10); // Sử dụng d3.schemeTableau10 để có màu sắc dễ phân biệt
 
     drawChart(groupedData, colorScale);
 });
@@ -34,7 +39,7 @@ function drawChart(data, colorScale) {
                 .range([margin.left, width - margin.right - 100]);
 
     const y = d3.scaleBand()
-                .domain(data.map(d => d.Nhom_hang))
+                .domain(data.map(d => d.Mat_hang))
                 .range([margin.top, height - margin.bottom])
                 .padding(0.3);
 
@@ -52,10 +57,10 @@ function drawChart(data, colorScale) {
         .append("rect")
         .attr("class", "bar")
         .attr("x", margin.left)
-        .attr("y", d => y(d.Nhom_hang))
+        .attr("y", d => y(d.Mat_hang))
         .attr("width", d => x(d.Thanh_tien) - margin.left)
         .attr("height", y.bandwidth())
-        .attr("fill", d => colorScale(d.Nhom_hang));
+        .attr("fill", d => colorScale(d.Nhom_hang)); // Màu theo nhóm hàng
 
     svg.selectAll(".label")
        .data(data)
@@ -63,7 +68,7 @@ function drawChart(data, colorScale) {
        .append("text")
        .attr("class", "label")
        .attr("x", d => x(d.Thanh_tien) - 5)
-       .attr("y", d => y(d.Nhom_hang) + y.bandwidth() / 2)
+       .attr("y", d => y(d.Mat_hang) + y.bandwidth() / 2)
        .attr("dy", "0.35em")
        .text(d => (d.Thanh_tien / 1e6).toFixed(0) + " triệu VND");
 
@@ -71,10 +76,11 @@ function drawChart(data, colorScale) {
        .attr("class", "title")
        .attr("x", width / 2)
        .attr("y", 30)
-       .text("Doanh số bán hàng theo Nhóm hàng")
-       .style("fill", "black");
+       .text("Doanh số bán hàng theo Mặt hàng")
+       .style("fill", "#33CCCC");
 
-    drawLegend(svg, colorScale, data.map(d => d.Nhom_hang), width - 180, margin.top);
+    // Vẽ legend theo nhóm hàng
+    drawLegend(svg, colorScale, [...new Set(data.map(d => d.Nhom_hang))], width - 200, margin.top);
 }
 
 function drawLegend(svg, colorScale, uniqueGroups, legendX, legendY) {
@@ -90,15 +96,16 @@ function drawLegend(svg, colorScale, uniqueGroups, legendX, legendY) {
         .attr("class", "legend-item")
         .attr("transform", (d, i) => `translate(0, ${i * legendSpacing})`)
         .each(function(d) {
-            d3.select(this).append("circle")
-                .attr("r", 6)
-                .attr("cx", 10)
-                .attr("cy", 10)
+            d3.select(this).append("rect") // Hình chữ nhật thay cho vòng tròn
+                .attr("width", 15)
+                .attr("height", 15)
+                .attr("x", 0)
+                .attr("y", 0)
                 .attr("fill", colorScale(d));
 
             d3.select(this).append("text")
                 .attr("x", 20)
-                .attr("y", 14)
+                .attr("y", 12)
                 .text(d.length > 20 ? d.slice(0, 20) + "..." : d)
                 .style("font-size", "14px")
                 .style("fill", "#333");
