@@ -1,4 +1,4 @@
-d3.csv("data_ggsheet (1).csv").then(function(data) {
+d3.csv("data_ggsheet.csv").then(function(data) {
     data.forEach(d => {
         d.Thanh_tien = +d.Thanh_tien;
         d.Mat_hang = `[${d.Ma_mat_hang}] ${d.Ten_mat_hang}`;
